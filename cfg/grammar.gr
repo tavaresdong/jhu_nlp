@@ -34,7 +34,7 @@
 
 1	S	NP VP
 1	VP	Verb NP
-1	NP	Det Noun
+100	NP	Det Noun
 1	NP	NP PP
 1	PP	Prep NP
 1	Noun	Adj Noun

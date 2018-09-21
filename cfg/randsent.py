@@ -15,8 +15,49 @@ Solution to some questions
       Set a upperbound for #expansions, the empirical upperbound is set to 250
       If one experiment exceeds the expansion upperbound, we can re-run the expansion and
       return the result
+
+3. This problem mainly focused on designing Context Free Grammars, see grammar_extended for some examples
 '''
 import numpy as np
+import sys
+
+class SyntaxTreeNode(object):
+    def __init__(self, symbol, rules):
+        self.sym = symbol
+        self.children = None
+        if symbol in rules:
+            self.is_terminal = False
+        else:
+            self.is_terminal = True
+
+    def get_sentence(self):
+        if self.is_terminal:
+            return self.sym
+        else:
+            child_syms = [child.get_sentence() for child in self.children]
+            return ' '.join(child_syms)
+
+    def get_structured_sentence(self):
+        if self.children is None:
+            return self.sym
+        else:
+            child_sents = [child.get_structured_sentence() for child in self.children]
+            child_sents.insert(0, self.sym)
+            return '(' + ' '.join(child_sents) + ')'
+
+    def get_higlighted_sentence(self):
+        if self.children is None:
+            return self.sym
+        else:
+            child_sents = [child.get_higlighted_sentence() for child in self.children]
+            sentence  = ' '.join(child_sents)
+            if self.sym == 'S':
+                return '{' + sentence + '}'
+            elif self.sym == 'NP':
+                return '[' + sentence + ']'
+            else:
+                return sentence
+
 
 class CFGRandomSentenceGenerator(object):
     MAX_EXPANSION = 250
@@ -50,9 +91,6 @@ class CFGRandomSentenceGenerator(object):
             sum_odds = sum(odds_list)
             rule_prob_dict[key] = [x / sum_odds for x in odds_list]
 
-        # for key, value in rule_prob_dict.items():
-        #     print(key)
-        #     print(value)
         return rule_dict, rule_prob_dict
 
     def _contains_nonternimal(self, sentence):
@@ -61,7 +99,7 @@ class CFGRandomSentenceGenerator(object):
                 return True
         return False
 
-    def _expand(self, sentence):
+    def _expand_iterative(self, sentence):
         expanded_sentence = []
         for token in sentence:
             if token in self.rules:
@@ -75,18 +113,55 @@ class CFGRandomSentenceGenerator(object):
                 expanded_sentence.append(token)
         return expanded_sentence
 
-    def generate_sentence(self):
+    def generate_sentence_iterative(self):
         sentence = ['ROOT']
         n_calls = 0
         while self._contains_nonternimal(sentence) and n_calls < CFGRandomSentenceGenerator.MAX_EXPANSION:
             n_calls += 1
             print (sentence)
-            sentence = self._expand(sentence)
+            sentence = self._expand_iterative(sentence)
         if n_calls == CFGRandomSentenceGenerator.MAX_EXPANSION:
-            return self.generate_sentence()
+            return self.generate_sentence_iterative()
         else:
             return sentence
 
+    def _expand_tree(self, node):
+        self.n_expand += 1
+        print("Expand: " + str(self.n_expand))
+        if self.n_expand >= CFGRandomSentenceGenerator.MAX_EXPANSION:
+            child = SyntaxTreeNode('...', self.rules)
+            node.children = [child]
+            return node
+
+        if not node.is_terminal:
+            token = node.sym
+            possible_expands = self.rules[token]
+            indexes = list(range(len(possible_expands)))
+            probs = self.rules_prob[token]
+            chosen_idx = np.random.choice(indexes, p=probs)
+            expanded = possible_expands[chosen_idx]
+            children = [SyntaxTreeNode(t, self.rules) for t in expanded]
+            recursive_expanded = [self._expand_tree(child) for child in children]
+            node.children = recursive_expanded
+
+        return node
+
+    def generate_sentence_tree(self):
+        self.n_expand = 0
+        root = SyntaxTreeNode('ROOT', self.rules)
+        tree = self._expand_tree(root)
+        return tree.get_higlighted_sentence()
+
+def print_usage():
+    print("run.py grammar_file num_sentences")
+    print("e.g. randsent.py grammar.gr 5 # will generate 5 sentences according to grammar.gr")
+
 if __name__ == "__main__":
-    generator = CFGRandomSentenceGenerator("grammar.gr")
-    print(' '.join(generator.generate_sentence()))
+    if len(sys.argv) < 2:
+        print_usage()
+    else:
+        grammar_file, n_sentences = sys.argv[1], int(sys.argv[2])
+        generator = CFGRandomSentenceGenerator(grammar_file)
+        # for i in range(n_sentences):
+        #     print(' '.join(generator.generate_sentence()))
+        print(generator.generate_sentence_tree())

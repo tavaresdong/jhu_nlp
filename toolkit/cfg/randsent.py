@@ -118,7 +118,6 @@ class CFGRandomSentenceGenerator(object):
         n_calls = 0
         while self._contains_nonternimal(sentence) and n_calls < CFGRandomSentenceGenerator.MAX_EXPANSION:
             n_calls += 1
-            print (sentence)
             sentence = self._expand_iterative(sentence)
         if n_calls == CFGRandomSentenceGenerator.MAX_EXPANSION:
             return self.generate_sentence_iterative()
@@ -127,7 +126,6 @@ class CFGRandomSentenceGenerator(object):
 
     def _expand_tree(self, node):
         self.n_expand += 1
-        print("Expand: " + str(self.n_expand))
         if self.n_expand >= CFGRandomSentenceGenerator.MAX_EXPANSION:
             child = SyntaxTreeNode('...', self.rules)
             node.children = [child]

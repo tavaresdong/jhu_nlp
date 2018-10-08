@@ -20,7 +20,6 @@ def forward_backward_prop(X, labels, params, dimensions):
                   and output dimension
     """
 
-    ### Unpack network parameters (do not modify)
     ofs = 0
     Dx, H, Dy = (dimensions[0], dimensions[1], dimensions[2])
 
@@ -32,22 +31,25 @@ def forward_backward_prop(X, labels, params, dimensions):
     ofs += H * Dy
     b2 = np.reshape(params[ofs:ofs + Dy], (1, Dy))
 
-    # Note: compute cost based on `sum` not `mean`.
+    # Forward pass
     z1 = np.matmul(X, W1) + b1
     h = sigmoid(z1)
     z2 = np.matmul(h, W2) + b2
     y_hat = softmax(z2)
     cost = -np.sum(labels * np.log(y_hat))
 
+    # Backward pass
     m = labels.shape[0]
     gradz2 = y_hat - labels
+
+    # h is shape (1, H), gradz2 is shape (1, Dy)
+    # so we need to flip the dimensions of h for it to multiply with gradz2
     gradW2 = np.matmul(h.T, gradz2)
     gradb2 = np.matmul(np.ones((1, m)), gradz2)
     gradz1 = np.matmul(gradz2, W2.T) * sigmoid_grad(sigmoid(z1))
     gradW1 = np.matmul(X.T, gradz1)
     gradb1 = np.matmul(np.ones((1, m)), gradz1)
 
-    ### Stack gradients (do not modify)
     grad = np.concatenate((gradW1.flatten(), gradb1.flatten(),
         gradW2.flatten(), gradb2.flatten()))
 

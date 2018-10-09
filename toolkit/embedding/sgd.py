@@ -26,7 +26,7 @@ def load_saved_params(folder):
     if st > 0:
         path = "saved_params_%d.npy" % st
         path = op.join(folder, path)
-        with open(path, "r") as f:
+        with open(path, "rb") as f:
             params = pickle.load(f)
             state = pickle.load(f)
         return st, params, state

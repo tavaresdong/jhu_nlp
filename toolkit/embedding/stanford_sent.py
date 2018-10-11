@@ -10,8 +10,8 @@ def prepare_stanford_sentiment_treebank_data(root_dir):
     if root_dir is None:
         raise FileNotFoundError("Root directory for storing treebank is not specified")
 
-    zipfile_path = os.path.join(root_dir, "/stanfordSentimentTreebank.zip")
-    unzipped_folder = os.path.join(root_dir, "/stanford_sentiment")
+    zipfile_path = os.path.join(root_dir, "stanfordSentimentTreebank.zip")
+    unzipped_folder = os.path.join(root_dir, "stanford_sentiment")
 
     if not os.path.exists(root_dir):
         os.makedirs(root_dir)
@@ -20,14 +20,32 @@ def prepare_stanford_sentiment_treebank_data(root_dir):
         url = 'http://nlp.stanford.edu/~socherr/stanfordSentimentTreebank.zip'
         wget.download(url, zipfile_path)
 
-    zip_ref = zipfile.ZipFile(zipfile_path, 'r')
-    zip_ref.extractall(unzipped_folder)
-    zip_ref.close()
+        zip_ref = zipfile.ZipFile(zipfile_path, 'r')
+        zip_ref.extractall(unzipped_folder)
+        zip_ref.close()
+
+    sentences_path = os.path.join(unzipped_folder, "stanfordSentimentTreebank", "datasetSentences.txt")
+    with open(sentences_path, 'r', encoding="latin-1") as f:
+        lines = f.readlines()
+        for line in lines:
+            if line.find("But in Imax 3-D") != -1:
+                print(line)
+
+    print("Now it is the dictionary's turn")
+    dictionary_path = os.path.join(unzipped_folder, "stanfordSentimentTreebank", "dictionary.txt")
+    with open(dictionary_path, 'r', encoding="utf-8") as f:
+        lines = f.readlines()
+        for line in lines:
+            if line.find("But in Imax 3-D") != -1:
+                print(line)
+
+
 
 class StanfordSentiment:
     def __init__(self, root_dir="datasets", tablesize = 1000000):
         prepare_stanford_sentiment_treebank_data(root_dir)
-        self.path = os.path.join(root_dir, "/stanford_sentiment/stanfordSentimentTreebank")
+
+        self.path = os.path.join(root_dir, "stanford_sentiment", "stanfordSentimentTreebank")
         self.tablesize = tablesize
 
     def tokens(self):
@@ -70,16 +88,17 @@ class StanfordSentiment:
         with open(self.path + "/datasetSentences.txt", "r") as f:
             first = True
             for line in f:
-
-                # Ignore the first line of each file
                 if first:
                     first = False
                     continue
 
+                # line = line.decode('latin1').encode('utf8')
                 splitted = line.strip().split()[1:]
-
-                # Since python3, all str are in unicode
+                # Deal with some peculiar encoding issues with this file
                 sentences += [[w.lower() for w in splitted]]
+                # sentences += [[w.lower().encode('latin1')
+                            #    for w in splitted]]
+
 
         self._sentences = sentences
         self._sentlengths = np.array([len(s) for s in sentences])
@@ -102,8 +121,8 @@ class StanfordSentiment:
         rejectProb = self.rejectProb()
         tokens = self.tokens()
         allsentences = [[w for w in s
-            if 0 >= rejectProb[tokens[w]] or random.random() >= rejectProb[tokens[w]]]
-            for s in sentences * 30]
+                         if 0 >= rejectProb[tokens[w]] or random.random() >= rejectProb[tokens[w]]]
+                        for s in sentences * 30]
 
         allsentences = [s for s in allsentences if len(s) > 1]
 
@@ -118,8 +137,8 @@ class StanfordSentiment:
         wordID = random.randint(0, len(sent) - 1)
 
         context = sent[max(0, wordID - C):wordID]
-        if wordID+1 < len(sent):
-            context += sent[wordID+1:min(len(sent), wordID + C + 1)]
+        if wordID + 1 < len(sent):
+            context += sent[wordID + 1:min(len(sent), wordID + C + 1)]
 
         centerword = sent[wordID]
         context = [w for w in context if w != centerword]
@@ -130,10 +149,6 @@ class StanfordSentiment:
             return self.getRandomContext(C)
 
     def sent_labels(self):
-        '''
-        The dictionary file de-serialized
-        :return:
-        '''
         if hasattr(self, "_sent_labels") and self._sent_labels:
             return self._sent_labels
 
@@ -142,11 +157,12 @@ class StanfordSentiment:
         with open(self.path + "/dictionary.txt", "r") as f:
             for line in f:
                 line = line.strip()
-                if not line: continue
+                if not line:
+                    continue
                 splitted = line.split("|")
-                dictionary[splitted[0].lower()] = int(splitted[1])
+                sent = splitted[0].lower()
+                dictionary[sent] = int(splitted[1])
                 phrases += 1
-
         labels = [0.0] * phrases
         with open(self.path + "/sentiment_labels.txt", "r") as f:
             first = True
@@ -156,7 +172,8 @@ class StanfordSentiment:
                     continue
 
                 line = line.strip()
-                if not line: continue
+                if not line:
+                    continue
                 splitted = line.split("|")
                 labels[int(splitted[0])] = float(splitted[1])
 
@@ -164,7 +181,11 @@ class StanfordSentiment:
         sentences = self.sentences()
         for i in range(self.numSentences()):
             sentence = sentences[i]
-            full_sent = " ".join(sentence).replace('-lrb-', '(').replace('-rrb-', ')')
+            sentence = [word for word in sentence]
+            # print(sentence)
+            full_sent = " ".join(sentence).replace(
+                            '-lrb-', '(').replace('-rrb-', ')')
+
             sent_labels[i] = labels[dictionary[full_sent]]
 
         self._sent_labels = sent_labels
@@ -271,4 +292,4 @@ class StanfordSentiment:
         return self.sampleTable()[random.randint(0, self.tablesize - 1)]
 
 if __name__ == "__main__":
-    prepare_stanford_sentiment_treebank_data()
+    prepare_stanford_sentiment_treebank_data("datasets")

@@ -80,7 +80,7 @@ def outputPredictions(dataset, features, labels, clf, filename):
                 labels[i], pred[i], " ".join(dataset[i][0])), f)
 
 def __main__():
-    dataset = StanfordSentiment()
+    dataset = StanfordSentiment(root_dir="../datasets")
     tokens = dataset.tokens()
     numWords = len(tokens)
 

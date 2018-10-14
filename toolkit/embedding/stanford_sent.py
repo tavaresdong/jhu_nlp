@@ -25,7 +25,7 @@ def prepare_stanford_sentiment_treebank_data(root_dir):
         zip_ref.close()
 
     sentences_path = os.path.join(unzipped_folder, "stanfordSentimentTreebank", "datasetSentences.txt")
-    with open(sentences_path, 'r', encoding="latin-1") as f:
+    with open(sentences_path, 'r') as f:
         lines = f.readlines()
         for line in lines:
             if line.find("But in Imax 3-D") != -1:
@@ -38,8 +38,6 @@ def prepare_stanford_sentiment_treebank_data(root_dir):
         for line in lines:
             if line.find("But in Imax 3-D") != -1:
                 print(line)
-
-
 
 class StanfordSentiment:
     def __init__(self, root_dir="datasets", tablesize = 1000000):

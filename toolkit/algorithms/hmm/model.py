@@ -73,7 +73,6 @@ class HMM(object):
         if not self.ready():
             raise RuntimeError("HMM is not fed/trained with probabilities")
 
-
         init = [self.inialProb(i) * self.emissionProb(i, observations[0]) for i in range(self._nStates)]
         forward = [init]
         observation_len = len(observations)
@@ -89,9 +88,49 @@ class HMM(object):
                 trellis[s] = path_sum
             forward.append(trellis)
 
-        finalProb = sum(forward[-1])
-        return finalProb
+        finalprob = sum(forward[-1])
+        return finalprob
 
+    def decode(self, observations):
+        '''
+        Given a HMM and a sequence of observations, find the most probable hidden state sequence.
+        The Viterbi algorithm
+        :param observations:
+        :return: best path (list of states) and its probability
+        '''
+        if not observations:
+            raise ValueError("observations must not be empty")
+        if not self.ready():
+            raise RuntimeError("HMM is not fed/trained with probabilities")
+
+        # Initialize the forward trellis and backpointers
+        forward = [[self.inialProb(i) * self.emissionProb(i, observations[0]) for i in range(self._nStates)]]
+        backpointers = [[0] * self._nStates]
+
+        observation_len = len(observations)
+        for t in range(1, observation_len):
+            trellis = [0.0] * self._nStates
+            bp = [0] * self._nStates
+            prev = forward[-1]
+            for s in range(self._nStates):
+                aggregate = -1.0
+                for ss in range(self._nStates):
+                    extended_prob = prev[ss] * self.transitionProb(ss, s) * self.emissionProb(s, observations[t])
+                    if extended_prob >= aggregate:
+                        aggregate = extended_prob
+                        bp[s] = ss
+                trellis[s] = aggregate
+            forward.append(trellis)
+            backpointers.append(bp)
+
+        best_path_prob = max(forward[-1])
+        best_path = []
+        best_path_node = forward[-1].index(best_path_prob)
+        for i in range(observation_len - 1, -1, -1):
+            best_path.insert(0, best_path_node)
+            best_path_node = backpointers[i][best_path_node]
+
+        return best_path, best_path_prob
 
 def __likelihood_sanitycheck():
     nStates = 3
@@ -121,8 +160,21 @@ def __likelihood_illegalArgumentCheck():
         print(e)
         assert True
 
+def __decode_sanitycheck():
+    nStates = 3
+    transitionProb = np.array([[0.5, 0.2, 0.3], [0.3, 0.5, 0.2], [0.2, 0.3, 0.5]])
+    emissionProb = [{"Red":0.5, "White":0.5}, {"Red":0.4, "White":0.6}, {"Red":0.7, "White":0.3}]
+    initialProb = [0.2, 0.4, 0.4]
 
+    hmm = HMM(nStates, transitionProb, initialProb, emissionProb)
+    best_path, best_path_prob = hmm.decode(["Red", "White", "Red"])
+    print(best_path)
+    print(best_path_prob)
+    assert(best_path[0] == 2 and best_path[1] == 2 and best_path[2] == 2)
+    answer = 0.0147
+    assert(abs(answer - best_path_prob) < 1e-3)
 
 if __name__ == "__main__":
     __likelihood_sanitycheck()
     __likelihood_illegalArgumentCheck()
+    __decode_sanitycheck()
